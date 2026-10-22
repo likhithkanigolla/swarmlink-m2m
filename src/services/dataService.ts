@@ -59,8 +59,8 @@ export class ApiAdapter implements DataAdapter {
   private onStatus: ((s: ConnectionStatus) => void) | null = null;
   private speed = 1;
   private paused = false;
-  private apiUrl = import.meta.env.VITE_API_URL ?? "";
-  private wsUrl = import.meta.env.VITE_WS_URL ?? "";
+  private apiUrl = (import.meta.env as Record<string, string | undefined>)["VITE_API_URL"] ?? "";
+  private wsUrl = (import.meta.env as Record<string, string | undefined>)["VITE_WS_URL"] ?? "";
 
   start(emit: (m: FeedMessage) => void, onStatus: (s: ConnectionStatus) => void) {
     this.emit = emit;
@@ -143,5 +143,5 @@ export class ApiAdapter implements DataAdapter {
 }
 
 export function createAdapter(): DataAdapter {
-  return import.meta.env.VITE_API_URL ? new ApiAdapter() : new MockAdapter();
+  return (import.meta.env as Record<string, string | undefined>)["VITE_API_URL"] ? new ApiAdapter() : new MockAdapter();
 }

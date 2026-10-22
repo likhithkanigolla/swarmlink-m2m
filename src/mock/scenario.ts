@@ -15,6 +15,7 @@ import type {
   Protocol,
   QueueEntry,
   RemediationCatalogEntry,
+  RemediationStep,
   RoomHealth,
   RobotState,
   SecEntry,
@@ -129,7 +130,7 @@ function roomNode(r: RoomHealth): TreeNode {
 }
 
 function emptyKpi(id: string, label: string, unit: string, format?: Kpi["format"]): Kpi {
-  return { id, label, value: 0, unit, spark: Array(40).fill(0), format };
+  return { id, label, value: 0, unit, spark: Array(40).fill(0), ...(format ? { format } : {}) };
 }
 
 export class MockEngine {
@@ -217,7 +218,7 @@ export class MockEngine {
           const dev: DeviceState = {
             id: `${id}-d${d + 1}`,
             roomId: id,
-            kind: DEVICE_KINDS[d % DEVICE_KINDS.length],
+            kind: DEVICE_KINDS[d % DEVICE_KINDS.length] ?? "sensor",
             health: "alive",
             fault: null,
             lastSeenTs: Date.now(),
@@ -317,15 +318,31 @@ export class MockEngine {
   }
 
   private secEntry(src: string, path: string, acp: string, verdict: SecEntry["verdict"], code?: M2MStatus) {
-    const s: SecEntry = { id: `s${++this.seq}`, ts: Date.now(), src, path, acp, verdict, code };
+    const s: SecEntry = {
+      id: `s${++this.seq}`,
+      ts: Date.now(),
+      src,
+      path,
+      acp,
+      verdict,
+      ...(code !== undefined ? { code } : {}),
+    };
     this.security = [s, ...this.security].slice(0, 80);
     this.emit({ type: "security", data: this.security });
   }
 
   private flashTree(nodeId: string) {
     const walk = (n: TreeNode): TreeNode => {
-      const flash = n.id === nodeId ? Date.now() : n.flashTs;
-      return { ...n, flashTs: flash, children: n.children?.map(walk) };
+      const flash = nodeId ? (n.id === nodeId ? Date.now() : n.flashTs) : n.flashTs;
+      const res: TreeNode = {
+        id: n.id,
+        label: n.label,
+        kind: n.kind,
+        path: n.path,
+        ...(flash !== undefined ? { flashTs: flash } : {}),
+        ...(n.children !== undefined ? { children: n.children.map(walk) } : {}),
+      };
+      return res;
     };
     this.tree = walk(this.tree);
     this.emitTree();
@@ -397,7 +414,10 @@ export class MockEngine {
     const walk = (n: TreeNode): TreeNode => {
       if (n.id === "incidents") {
         return {
-          ...n,
+          id: n.id,
+          label: n.label,
+          kind: n.kind,
+          path: n.path,
           flashTs: Date.now(),
           children: [
             { id: `inc-${id}`, label: id, kind: "flexContainer" as const, path: `${CSE}/flexContainer-incidents/${id}` },
@@ -405,20 +425,43 @@ export class MockEngine {
           ],
         };
       }
-      return { ...n, children: n.children?.map(walk) };
+      return {
+        id: n.id,
+        label: n.label,
+        kind: n.kind,
+        path: n.path,
+        ...(n.flashTs !== undefined ? { flashTs: n.flashTs } : {}),
+        ...(n.children !== undefined ? { children: n.children.map(walk) } : {}),
+      };
     };
     return walk(this.tree);
   }
 
-  private addSteps(inc: Incident, steps: Partial<RemediationStep> & { label: string }[]) {
-    const made: RemediationStep[] = steps.map((s, i) => ({
-      id: `${inc.id}-s${inc.steps.length + i + 1}`,
-      detail: "",
-      src: "",
-      dst: "",
-      status: "pending",
-      ...s,
-    }));
+  private addSteps(
+    inc: Incident,
+    steps: Array<{
+      label: string;
+      detail?: string;
+      src?: string;
+      dst?: string;
+      status?: RemediationStep["status"];
+      ts?: number;
+      latencyMs?: number;
+    }>,
+  ) {
+    const made: RemediationStep[] = steps.map((s, i) => {
+      const step: RemediationStep = {
+        id: `${inc.id}-s${inc.steps.length + i + 1}`,
+        label: s.label,
+        detail: s.detail ?? "",
+        src: s.src ?? "",
+        dst: s.dst ?? "",
+        status: s.status ?? "pending",
+        ...(s.ts !== undefined ? { ts: s.ts } : {}),
+        ...(s.latencyMs !== undefined ? { latencyMs: s.latencyMs } : {}),
+      };
+      return step;
+    });
     inc.steps = [...inc.steps, ...made];
     inc.updatedAt = Date.now();
     this.emitIncidents();
@@ -574,23 +617,27 @@ export class MockEngine {
     // device telemetry chains
     if (roll(0.5)) {
       const r = this.rooms[Math.floor(Math.random() * this.rooms.length)];
-      const d = r.devices[Math.floor(Math.random() * 3)];
-      const corr = `c-${++this.seq}`;
-      const path = `${CSE}/District${r.district}-MN-CSE/${r.name.replace(" ", "")}/${d.id}/timeSeries`;
-      this.evRaw({
-        layer: "device", protocol: "MQTT", src: d.id, dst: "MEC-IPE", op: "NOTIFY", path, status: 2000,
-        payload: { m2m: { rep: { temp: 21 + Math.random() * 4, hum: 45 + Math.random() * 10 } } },
-        roomId: r.id, deviceId: d.id,
-      });
-      this.evRaw({
-        layer: "mca", protocol: "HTTP", src: "MEC-IPE", dst: "MN-CSE", op: "CREATE", path, status: 2001,
-        correlationId: corr, roomId: r.id, deviceId: d.id,
-      });
-      if (roll(0.4)) {
-        this.evRaw({
-          layer: "mcc", protocol: "HTTP", src: "MN-CSE", dst: "IN-CSE", op: "NOTIFY", path, status: 2000,
-          correlationId: corr, roomId: r.id, deviceId: d.id,
-        });
+      if (r && r.devices.length > 0) {
+        const d = r.devices[Math.floor(Math.random() * r.devices.length)];
+        if (d) {
+          const corr = `c-${++this.seq}`;
+          const path = `${CSE}/District${r.district}-MN-CSE/${r.name.replace(" ", "")}/${d.id}/timeSeries`;
+          this.evRaw({
+            layer: "device", protocol: "MQTT", src: d.id, dst: "MEC-IPE", op: "NOTIFY", path, status: 2000,
+            payload: { m2m: { rep: { temp: 21 + Math.random() * 4, hum: 45 + Math.random() * 10 } } },
+            roomId: r.id, deviceId: d.id,
+          });
+          this.evRaw({
+            layer: "mca", protocol: "HTTP", src: "MEC-IPE", dst: "MN-CSE", op: "CREATE", path, status: 2001,
+            correlationId: corr, roomId: r.id, deviceId: d.id,
+          });
+          if (roll(0.4)) {
+            this.evRaw({
+              layer: "mcc", protocol: "HTTP", src: "MN-CSE", dst: "IN-CSE", op: "NOTIFY", path, status: 2000,
+              correlationId: corr, roomId: r.id, deviceId: d.id,
+            });
+          }
+        }
       }
     }
     // robot polls its pollingChannel
@@ -990,41 +1037,45 @@ export class MockEngine {
         const candidates = this.rooms.filter((r) => r.health === "healthy");
         if (candidates.length) {
           const r = candidates[Math.floor(Math.random() * candidates.length)];
-          const d = r.devices[Math.floor(Math.random() * 3)];
-          const id = `inc-r${Math.floor(this.recurringNext)}`;
-          const fault: DeviceState["fault"] = Math.random() < 0.5 ? "nan" : "outlier";
-          const symptom = fault === "nan" ? "NaN burst on sensor stream" : "Persistent outlier / calibration drift";
-          this.setDeviceFault(d.id, fault);
-          const inc = this.openIncident(id, r.id, d.id, symptom);
-          this.emitQueue();
-          this.evRaw({
-            layer: "device", protocol: "MQTT", src: d.id, dst: "MEC-IPE", op: "NOTIFY",
-            path: `${CSE}/District${r.district}-MN-CSE/${r.name.replace(" ", "")}/${d.id}/timeSeries`,
-            status: 2000, roomId: r.id, deviceId: d.id, incidentId: id,
-            payload: fault === "nan" ? { m2m: { rep: { temp: "NaN" } } } : { m2m: { rep: { temp: 58.7 } } },
-          });
-          // automatic full remediation for catalogue-known symptoms
-          const cat = CATALOG.find((c) => c.symptom === symptom)!;
-          setTimeout(() => {
-            this.evRaw({
-              layer: "robot", protocol: "HTTP", src: "Robot", dst: "IN-CSE", op: "RETRIEVE",
-              path: `${CSE}/remediationCatalog/${cat.id}`, status: 2000, roomId: r.id, incidentId: id,
-              payload: { id: cat.id, steps: cat.steps, risk: cat.riskTier },
-            });
-            this.setIncident(inc, { remediationId: cat.id, status: "in_progress" });
-            setTimeout(() => {
+          if (r && r.devices.length > 0) {
+            const d = r.devices[Math.floor(Math.random() * r.devices.length)];
+            if (d) {
+              const id = `inc-r${Math.floor(this.recurringNext)}`;
+              const fault: DeviceState["fault"] = Math.random() < 0.5 ? "nan" : "outlier";
+              const symptom = fault === "nan" ? "NaN burst on sensor stream" : "Persistent outlier / calibration drift";
+              this.setDeviceFault(d.id, fault);
+              const inc = this.openIncident(id, r.id, d.id, symptom);
+              this.emitQueue();
               this.evRaw({
-                layer: "robot", protocol: "MQTT", src: "Robot", dst: d.id, op: "CREATE",
-                path: `${CSE}/.../${d.id}/mgmtObj`, status: 2001, roomId: r.id, deviceId: d.id, incidentId: id,
-                payload: { exec: "apply", solution: cat.id },
+                layer: "device", protocol: "MQTT", src: d.id, dst: "MEC-IPE", op: "NOTIFY",
+                path: `${CSE}/District${r.district}-MN-CSE/${r.name.replace(" ", "")}/${d.id}/timeSeries`,
+                status: 2000, roomId: r.id, deviceId: d.id, incidentId: id,
+                payload: fault === "nan" ? { m2m: { rep: { temp: "NaN" } } } : { m2m: { rep: { temp: 58.7 } } },
               });
+              // automatic full remediation for catalogue-known symptoms
+              const cat = CATALOG.find((c) => c.symptom === symptom)!;
               setTimeout(() => {
-                this.setDeviceFault(d.id, null);
-                this.resolveIncident(inc);
-                this.emitQueue();
-              }, 3000);
-            }, 2500);
-          }, 2000);
+                this.evRaw({
+                  layer: "robot", protocol: "HTTP", src: "Robot", dst: "IN-CSE", op: "RETRIEVE",
+                  path: `${CSE}/remediationCatalog/${cat.id}`, status: 2000, roomId: r.id, incidentId: id,
+                  payload: { id: cat.id, steps: cat.steps, risk: cat.riskTier },
+                });
+                this.setIncident(inc, { remediationId: cat.id, status: "in_progress" });
+                setTimeout(() => {
+                  this.evRaw({
+                    layer: "robot", protocol: "MQTT", src: "Robot", dst: d.id, op: "CREATE",
+                    path: `${CSE}/.../${d.id}/mgmtObj`, status: 2001, roomId: r.id, deviceId: d.id, incidentId: id,
+                    payload: { exec: "apply", solution: cat.id },
+                  });
+                  setTimeout(() => {
+                    this.setDeviceFault(d.id, null);
+                    this.resolveIncident(inc);
+                    this.emitQueue();
+                  }, 3000);
+                }, 2500);
+              }, 2000);
+            }
+          }
         }
       }
       setTimeout(trigger, 1000);
