@@ -242,6 +242,36 @@ export class MockEngine {
   // ---------- lifecycle ----------
 
   start() {
+    this.queue = this.computeQueue();
+    // emit a batch of startup telemetry frames so the traffic hero is populated immediately
+    for (const r of this.rooms) {
+      for (const d of r.devices) {
+        const path = `${CSE}/District${r.district}-MN-CSE/${r.name.replace(" ", "")}/${d.id}/timeSeries`;
+        this.evRaw({
+          layer: "device",
+          protocol: "MQTT",
+          src: d.id,
+          dst: "MEC-IPE",
+          op: "NOTIFY",
+          path,
+          status: 2000,
+          payload: { m2m: { rep: { temp: 22.4, hum: 48.1 } } },
+          roomId: r.id,
+          deviceId: d.id,
+        });
+        this.evRaw({
+          layer: "mca",
+          protocol: "HTTP",
+          src: "MEC-IPE",
+          dst: "MN-CSE",
+          op: "CREATE",
+          path,
+          status: 2001,
+          roomId: r.id,
+          deviceId: d.id,
+        });
+      }
+    }
     this.pushSnapshot();
     this.timer = setInterval(() => this.tick(), 200);
   }

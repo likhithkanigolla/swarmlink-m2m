@@ -67,6 +67,7 @@ export function ResourceTreeExplorer() {
       id="resource-tree"
       title="oneM2M Resource Tree"
       subtitle="ACME CSEBase"
+      defaultCollapsed={true}
       action={
         <span className="text-[10px] font-mono text-muted-foreground">
           //acme.example.com

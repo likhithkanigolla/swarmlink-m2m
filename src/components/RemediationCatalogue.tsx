@@ -12,6 +12,7 @@ export function RemediationCatalogue() {
       id="remediation-catalog"
       title="Remediation Catalogue"
       subtitle="oneM2M Primitives"
+      defaultCollapsed={true}
       action={
         <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-mono">
           <BookOpen className="h-3 w-3" />
