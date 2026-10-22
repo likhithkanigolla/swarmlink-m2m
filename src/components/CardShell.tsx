@@ -76,13 +76,13 @@ export function CardShell({
         className,
       )}
     >
-      <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="flex items-center justify-between gap-2 border-b border-border/60 px-3.5 py-2.5">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           {collapsible && (
             <button
               type="button"
               onClick={() => setCollapsed((v) => !v)}
-              className="text-muted-foreground hover:text-foreground text-xs"
+              className="text-muted-foreground hover:text-foreground shrink-0 p-0.5"
               title={collapsed ? "Expand card" : "Collapse card"}
             >
               <span className="inline-block transform transition-transform duration-150 text-[10px]">
@@ -90,16 +90,18 @@ export function CardShell({
               </span>
             </button>
           )}
-          <div className="truncate text-sm font-semibold text-foreground tracking-tight">
-            {title}
+          <div className="min-w-0 flex items-baseline gap-2 truncate">
+            <span className="text-xs font-semibold text-foreground tracking-tight whitespace-nowrap">
+              {title}
+            </span>
+            {subtitle && (
+              <span className="hidden xl:inline truncate text-[11px] text-muted-foreground font-normal">
+                {subtitle}
+              </span>
+            )}
           </div>
-          {subtitle && (
-            <div className="hidden sm:inline-block truncate text-xs text-muted-foreground">
-              {subtitle}
-            </div>
-          )}
         </div>
-        <div className="flex items-center gap-1.5 ml-2">
+        <div className="flex shrink-0 items-center gap-1.5">
           {action}
           <button
             onClick={() => setFocusedCard(id)}

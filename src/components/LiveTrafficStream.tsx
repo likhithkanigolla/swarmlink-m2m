@@ -165,7 +165,7 @@ export function LiveTrafficStream() {
 
       {/* Stream Table */}
       <div
-        className="flex-1 overflow-y-auto max-h-[580px] scrollbar-thin"
+        className="flex-1 overflow-y-auto min-h-[460px] max-h-[calc(100vh-270px)] scrollbar-thin"
         onMouseEnter={() => setIsHoverPaused(true)}
         onMouseLeave={() => setIsHoverPaused(false)}
       >

@@ -192,6 +192,14 @@ export interface FlStatus {
   status: "idle" | "training" | "aggregating" | "published";
 }
 
+export interface SubsystemHealth {
+  id: string;
+  label: string;
+  status: "online" | "standby" | "warn" | "crit" | "offline";
+  endpoint?: string;
+  type?: "server" | "radio" | "wifi" | "brain" | "gateway";
+}
+
 export type FeedMessageType =
   | "event"
   | "metric"
@@ -205,6 +213,7 @@ export type FeedMessageType =
   | "link"
   | "security"
   | "fl"
+  | "subsystems"
   | "snapshot";
 
 export interface FeedMessage {
@@ -213,6 +222,7 @@ export interface FeedMessage {
 }
 
 export interface Snapshot {
+  subsystems?: SubsystemHealth[];
   rooms: RoomHealth[];
   robot: RobotState;
   queue: QueueEntry[];

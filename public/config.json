@@ -1,0 +1,192 @@
+{
+  "system": {
+    "name": "SwarmLink-M2M Command Center",
+    "version": "1.0",
+    "network": "Private 5G"
+  },
+  "subsystems": [
+    {
+      "id": "in-cse",
+      "label": "IN-CSE",
+      "status": "online",
+      "endpoint": "//acme.example.com/CSEBase",
+      "type": "server"
+    },
+    {
+      "id": "mn-a",
+      "label": "MN-CSE A",
+      "status": "online",
+      "endpoint": "//acme.example.com/CSEBase/DistrictA-MN-CSE",
+      "type": "server"
+    },
+    {
+      "id": "mn-b",
+      "label": "MN-CSE B",
+      "status": "standby",
+      "endpoint": "//acme.example.com/CSEBase/DistrictB-MN-CSE",
+      "type": "server"
+    },
+    {
+      "id": "5g-core",
+      "label": "5G Core",
+      "status": "online",
+      "endpoint": "core.5g.local",
+      "type": "radio"
+    },
+    {
+      "id": "radio",
+      "label": "5G Radio",
+      "status": "online",
+      "endpoint": "gNB-DistrictA",
+      "type": "wifi"
+    },
+    {
+      "id": "edge-llm",
+      "label": "Edge LLM",
+      "status": "online",
+      "endpoint": "llm-mcp.edge.local",
+      "type": "brain"
+    }
+  ],
+  "rooms": [
+    {
+      "id": "r1",
+      "name": "Room 1",
+      "district": "A",
+      "grid": { "col": 0, "row": 0 },
+      "health": "healthy",
+      "devices": [
+        {
+          "id": "r1-d1",
+          "roomId": "r1",
+          "kind": "temp-humid",
+          "health": "alive",
+          "fault": null
+        },
+        {
+          "id": "r1-d2",
+          "roomId": "r1",
+          "kind": "co2",
+          "health": "alive",
+          "fault": null
+        },
+        {
+          "id": "r1-d3",
+          "roomId": "r1",
+          "kind": "occupancy",
+          "health": "alive",
+          "fault": null
+        }
+      ]
+    },
+    {
+      "id": "r2",
+      "name": "Room 2",
+      "district": "A",
+      "grid": { "col": 1, "row": 0 },
+      "health": "healthy",
+      "devices": [
+        {
+          "id": "r2-d1",
+          "roomId": "r2",
+          "kind": "temp-humid",
+          "health": "alive",
+          "fault": null
+        },
+        {
+          "id": "r2-d2",
+          "roomId": "r2",
+          "kind": "co2",
+          "health": "alive",
+          "fault": null
+        },
+        {
+          "id": "r2-d3",
+          "roomId": "r2",
+          "kind": "occupancy",
+          "health": "alive",
+          "fault": null
+        }
+      ]
+    },
+    {
+      "id": "r3",
+      "name": "Room 3",
+      "district": "B",
+      "grid": { "col": 0, "row": 1 },
+      "health": "healthy",
+      "devices": [
+        {
+          "id": "r3-d1",
+          "roomId": "r3",
+          "kind": "temp-humid",
+          "health": "alive",
+          "fault": null
+        },
+        {
+          "id": "r3-d2",
+          "roomId": "r3",
+          "kind": "co2",
+          "health": "alive",
+          "fault": null
+        },
+        {
+          "id": "r3-d3",
+          "roomId": "r3",
+          "kind": "occupancy",
+          "health": "alive",
+          "fault": null
+        }
+      ]
+    },
+    {
+      "id": "r4",
+      "name": "Room 4",
+      "district": "B",
+      "grid": { "col": 1, "row": 1 },
+      "health": "healthy",
+      "devices": [
+        {
+          "id": "r4-d1",
+          "roomId": "r4",
+          "kind": "temp-humid",
+          "health": "alive",
+          "fault": null
+        },
+        {
+          "id": "r4-d2",
+          "roomId": "r4",
+          "kind": "co2",
+          "health": "alive",
+          "fault": null
+        },
+        {
+          "id": "r4-d3",
+          "roomId": "r4",
+          "kind": "occupancy",
+          "health": "alive",
+          "fault": null
+        }
+      ]
+    }
+  ],
+  "robot": {
+    "battery": 86,
+    "memPct": 41,
+    "posRoomId": "r1",
+    "targetRoomId": null,
+    "progress": 1,
+    "route": [],
+    "detour": null,
+    "etaMs": 0,
+    "busy": false
+  },
+  "link": {
+    "rsrp": -88,
+    "sinr": 18,
+    "state": "monitoring",
+    "interruptionMs": 0,
+    "district": "A",
+    "threshold": -105
+  }
+}

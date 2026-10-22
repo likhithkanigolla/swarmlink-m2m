@@ -10,8 +10,8 @@ export function RemediationCatalogue() {
   return (
     <CardShell
       id="remediation-catalog"
-      title="Remediation Solutions Catalogue"
-      subtitle="oneM2M Standardized Primitive Chains"
+      title="Remediation Catalogue"
+      subtitle="oneM2M Primitives"
       action={
         <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-mono">
           <BookOpen className="h-3 w-3" />

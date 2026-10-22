@@ -39,8 +39,8 @@ export function LinkHandoverMonitor() {
   return (
     <CardShell
       id="link-monitor"
-      title="5G Radio Link &amp; Handover Monitor"
-      subtitle={`District ${link.district} · Interruption: ${link.interruptionMs} ms`}
+      title="5G Link &amp; Handover"
+      subtitle={`Dist ${link.district} · ${link.interruptionMs}ms`}
       action={
         <div className="flex items-center gap-2 font-mono text-[10px]">
           <span className="text-sky-600 dark:text-sky-400">RSRP: {Math.round(link.rsrp)} dBm</span>

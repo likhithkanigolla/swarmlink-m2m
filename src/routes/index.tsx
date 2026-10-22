@@ -20,41 +20,32 @@ export const Route = createFileRoute("/")({
 });
 
 function DashboardPage() {
-  const [roomCount, setRoomCountState] = useState(4);
-  const { setRoomCount, decide } = useDataStream();
-
-  const handleRoomCountChange = (n: number) => {
-    setRoomCountState(n);
-    setRoomCount(n);
-  };
+  const { decide } = useDataStream();
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary">
-      {/* 1. Top bar with health chips, clock, speed, and theme controls */}
-      <TopBar
-        currentRoomCount={roomCount}
-        onRoomCountChange={handleRoomCountChange}
-      />
+      {/* 1. Top bar with backend subsystem chips, clock, and theme controls */}
+      <TopBar />
 
       {/* 2. KPI Strip with small sparklines */}
       <KpiStrip />
 
-      {/* Main 3-column Layout (Desktop-first: ~30% Left, ~45% Centre, ~25% Right) */}
-      <main className="flex-1 p-3 sm:p-4 lg:p-5">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-          {/* Left Column (3.5 cols / ~30%): Floor Map + Virtual Queue + Verification List */}
-          <div className="lg:col-span-4 xl:col-span-4 flex flex-col gap-4">
+      {/* Main 3-column Layout (Desktop-first: ~30% Left, ~42% Centre Hero, ~28% Right) */}
+      <main className="flex-1 p-3 sm:p-4 lg:p-4 xl:p-5">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 xl:gap-4 items-start">
+          {/* Left Column (4 cols / ~33%): Floor Map + Virtual Queue + Verification List */}
+          <div className="lg:col-span-4 flex flex-col gap-3.5 xl:gap-4">
             <FloorMap />
             <VirtualQueue />
           </div>
 
-          {/* Centre Hero (5.5 cols / ~45%): Unified Live Traffic Stream */}
-          <div className="lg:col-span-5 xl:col-span-5 flex flex-col gap-4">
+          {/* Centre Hero (5 cols / ~42%): Unified Live Traffic Stream */}
+          <div className="lg:col-span-5 flex flex-col gap-3.5 xl:gap-4">
             <LiveTrafficStream />
           </div>
 
           {/* Right Column (3 cols / ~25%): Remediation timeline, Approval panel, AI audit, Resource tree, Catalogue, Link monitor */}
-          <div className="lg:col-span-3 xl:col-span-3 flex flex-col gap-4">
+          <div className="lg:col-span-3 flex flex-col gap-3.5 xl:gap-4">
             {/* Operator Approval Panel (appears when PENDING_APPROVAL) */}
             <ApprovalPanel onDecide={decide} />
 

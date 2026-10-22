@@ -65,8 +65,8 @@ export function ResourceTreeExplorer() {
   return (
     <CardShell
       id="resource-tree"
-      title="oneM2M Resource Tree Explorer"
-      subtitle="ACME CSEBase Hierarchy &middot; Soft 2s flash updates"
+      title="oneM2M Resource Tree"
+      subtitle="ACME CSEBase"
       action={
         <span className="text-[10px] font-mono text-muted-foreground">
           //acme.example.com

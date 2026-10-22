@@ -28,13 +28,9 @@ export function useDataStream() {
     adapterRef.current?.setPaused(paused);
   }, [paused]);
 
-  const setRoomCount = (n: number) => {
-    adapterRef.current?.setRoomCount(n);
-  };
-
   const decide = (incidentId: string, approve: boolean) => {
     adapterRef.current?.decide(incidentId, approve);
   };
 
-  return { adapter: adapterRef.current, setRoomCount, decide };
+  return { adapter: adapterRef.current, decide };
 }

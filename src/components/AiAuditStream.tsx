@@ -9,8 +9,8 @@ export function AiAuditStream() {
   return (
     <CardShell
       id="ai-audit"
-      title="Autonomous AI Audit &amp; Guardrail Log"
-      subtitle="Triage reasoning &amp; safety barriers"
+      title="AI Guardrail Audit"
+      subtitle="Triage &amp; safety barriers"
       action={
         <span className="font-mono text-[10px] text-muted-foreground">
           {audit.length} entries

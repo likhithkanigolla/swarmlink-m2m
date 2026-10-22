@@ -60,7 +60,7 @@ export function RemediationTimeline() {
   return (
     <CardShell
       id="remediation-timeline"
-      title="Remediation Protocol Timeline"
+      title="Remediation Protocol"
       subtitle={`${activeIncident.id} · Room ${activeIncident.roomId.replace("r", "")}`}
       action={
         <div className="flex items-center gap-1.5">

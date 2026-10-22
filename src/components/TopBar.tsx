@@ -15,23 +15,16 @@ import {
   Sliders,
 } from "lucide-react";
 import { useDashboard } from "@/store/dashboard";
-import { Badge } from "@/components/ui/badge";
+import type { SubsystemHealth } from "@/types/domain";
 
-interface TopBarProps {
-  onSpeedChange?: (speed: number) => void;
-  onRoomCountChange?: (count: number) => void;
-  currentRoomCount?: number;
-}
-
-export function TopBar({ onSpeedChange, onRoomCountChange, currentRoomCount = 4 }: TopBarProps) {
+export function TopBar() {
   const connection = useDashboard((s) => s.connection);
   const paused = useDashboard((s) => s.paused);
   const setPaused = useDashboard((s) => s.setPaused);
-  const speed = useDashboard((s) => s.speed);
-  const setSpeed = useDashboard((s) => s.setSpeed);
   const dark = useDashboard((s) => s.dark);
   const toggleDark = useDashboard((s) => s.toggleDark);
   const link = useDashboard((s) => s.link);
+  const subsystems = useDashboard((s) => s.subsystems);
 
   const [timeStr, setTimeStr] = useState<string>("");
 
@@ -52,28 +45,27 @@ export function TopBar({ onSpeedChange, onRoomCountChange, currentRoomCount = 4 
     return () => clearInterval(interval);
   }, []);
 
-  const handleSpeed = (s: number) => {
-    setSpeed(s);
-    onSpeedChange?.(s);
+  // Icon mapping for backend subsystem types
+  const getSubsystemIcon = (type?: string, id?: string) => {
+    if (type === "brain" || id === "edge-llm") return Brain;
+    if (type === "radio" || id === "5g-core") return Radio;
+    if (type === "wifi" || id === "radio") return Wifi;
+    return Server;
   };
 
-  const isLiveApi = (import.meta.env as Record<string, string | undefined>)["VITE_API_URL"] !== undefined;
-
-  // Health chip statuses
-  const chips = [
-    { id: "in-cse", label: "IN-CSE", status: "online", icon: Server },
-    { id: "mn-a", label: "MN-CSE A", status: link?.district === "A" ? "online" : "standby", icon: Server },
-    { id: "mn-b", label: "MN-CSE B", status: link?.district === "B" ? "online" : "standby", icon: Server },
-    { id: "5g-core", label: "5G Core", status: link?.state === "re_registering" ? "warn" : "online", icon: Radio },
-    { id: "radio", label: "Radio", status: (link?.rsrp ?? -80) < -100 ? "warn" : "online", icon: Wifi },
-    { id: "edge-llm", label: "Edge LLM", status: "online", icon: Brain },
-    {
-      id: "ws",
-      label: isLiveApi ? "WebSocket" : "Mock Engine",
-      status: connection === "connected" || connection === "mock" ? "online" : connection === "reconnecting" ? "warn" : "crit",
-      icon: Activity,
-    },
-  ];
+  // Subsystems from backend JSON snapshot / stream
+  const activeDistrict = link?.district ?? "A";
+  const displayChips: SubsystemHealth[] =
+    subsystems.length > 0
+      ? subsystems
+      : [
+          { id: "in-cse", label: "IN-CSE", status: "online", type: "server", endpoint: "//acme.example.com/CSEBase" },
+          { id: "mn-a", label: "MN-CSE A", status: activeDistrict === "A" ? "online" : "standby", type: "server", endpoint: "//acme.example.com/CSEBase/DistrictA-MN-CSE" },
+          { id: "mn-b", label: "MN-CSE B", status: activeDistrict === "B" ? "online" : "standby", type: "server", endpoint: "//acme.example.com/CSEBase/DistrictB-MN-CSE" },
+          { id: "5g-core", label: "5G Core", status: link?.state === "re_registering" ? "warn" : "online", type: "radio", endpoint: "core.5g.local" },
+          { id: "radio", label: "Radio", status: (link?.rsrp ?? -80) < -100 ? "warn" : "online", type: "wifi", endpoint: "gNB-DistrictA" },
+          { id: "edge-llm", label: "Edge LLM", status: "online", type: "brain", endpoint: "llm-mcp.edge.local" },
+        ];
 
   return (
     <header className="sticky top-0 z-40 flex h-14 w-full items-center justify-between border-b border-border bg-card/95 px-4 sm:px-6 backdrop-blur-md">
@@ -97,10 +89,10 @@ export function TopBar({ onSpeedChange, onRoomCountChange, currentRoomCount = 4 
         </div>
       </div>
 
-      {/* Subsystem health chips */}
-      <div className="hidden xl:flex items-center gap-1.5">
-        {chips.map((c) => {
-          const Icon = c.icon;
+      {/* Backend-driven subsystem health chips */}
+      <div className="hidden lg:flex items-center gap-1.5">
+        {displayChips.map((c) => {
+          const Icon = getSubsystemIcon(c.type, c.id);
           const dotColor =
             c.status === "online"
               ? "bg-emerald-500"
@@ -109,10 +101,12 @@ export function TopBar({ onSpeedChange, onRoomCountChange, currentRoomCount = 4 
               : c.status === "standby"
               ? "bg-blue-400"
               : "bg-rose-500";
+
           return (
             <div
               key={c.id}
               className="flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/40 px-2.5 py-1 text-[11px] text-foreground font-medium"
+              title={c.endpoint ? `${c.label} · ${c.endpoint}` : c.label}
             >
               <span className={`h-1.5 w-1.5 rounded-full ${dotColor}`} />
               <Icon className="h-3 w-3 text-muted-foreground" />
@@ -124,46 +118,6 @@ export function TopBar({ onSpeedChange, onRoomCountChange, currentRoomCount = 4 
 
       {/* Controls & Clock */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Scenario Speed (1x, 2x, 5x) */}
-        {!isLiveApi && (
-          <div className="flex items-center rounded-lg border border-border bg-muted/50 p-0.5 text-xs">
-            {[1, 2, 5].map((s) => (
-              <button
-                key={s}
-                onClick={() => handleSpeed(s)}
-                className={`rounded px-2 py-0.5 font-medium transition-colors ${
-                  speed === s
-                    ? "bg-card text-foreground shadow-xs font-semibold"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {s}x
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Room scaling (4, 6, 8) */}
-        {!isLiveApi && onRoomCountChange && (
-          <div className="hidden md:flex items-center rounded-lg border border-border bg-muted/50 p-0.5 text-xs">
-            <span className="px-1.5 text-[10px] text-muted-foreground uppercase font-mono">Rooms</span>
-            {[4, 6, 8].map((n) => (
-              <button
-                key={n}
-                onClick={() => onRoomCountChange(n)}
-                className={`rounded px-1.5 py-0.5 transition-colors ${
-                  currentRoomCount === n
-                    ? "bg-card text-foreground font-semibold shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                title={`Configure ${n} rooms`}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-        )}
-
         {/* Play/Pause */}
         <button
           onClick={() => setPaused(!paused)}
@@ -186,16 +140,6 @@ export function TopBar({ onSpeedChange, onRoomCountChange, currentRoomCount = 4 
             </>
           )}
         </button>
-
-        {/* Mode indicator */}
-        <div className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground border border-border rounded-lg px-2 py-1">
-          <span
-            className={`h-2 w-2 rounded-full ${
-              connection === "mock" ? "bg-cyan-500" : connection === "connected" ? "bg-emerald-500" : "bg-rose-500"
-            }`}
-          />
-          <span className="font-mono text-[11px]">{connection === "mock" ? "Simulation" : "Live API"}</span>
-        </div>
 
         {/* Theme toggle */}
         <button

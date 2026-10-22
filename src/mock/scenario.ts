@@ -20,6 +20,7 @@ import type {
   RobotState,
   SecEntry,
   Snapshot,
+  SubsystemHealth,
   TrafficEvent,
   TreeNode,
 } from "@/types/domain";
@@ -152,6 +153,14 @@ export class MockEngine {
   private security: SecEntry[] = [];
   private tree: TreeNode;
   private link: LinkMetrics;
+  private subsystems: SubsystemHealth[] = [
+    { id: "in-cse", label: "IN-CSE", status: "online", type: "server", endpoint: "//acme.example.com/CSEBase" },
+    { id: "mn-a", label: "MN-CSE A", status: "online", type: "server", endpoint: "//acme.example.com/CSEBase/DistrictA-MN-CSE" },
+    { id: "mn-b", label: "MN-CSE B", status: "standby", type: "server", endpoint: "//acme.example.com/CSEBase/DistrictB-MN-CSE" },
+    { id: "5g-core", label: "5G Core", status: "online", type: "radio", endpoint: "core.5g.local" },
+    { id: "radio", label: "5G Radio", status: "online", type: "wifi", endpoint: "gNB-DistrictA" },
+    { id: "edge-llm", label: "Edge LLM", status: "online", type: "brain", endpoint: "llm-mcp.edge.local" },
+  ];
   private fl: FlStatus = { round: 14, modelVersion: "v0.9.3", status: "idle" };
   private kpis: Kpi[];
   private layerBuckets: { bucketTs: number; counts: Partial<Record<Layer, number>> }[] = [];
@@ -261,6 +270,7 @@ export class MockEngine {
 
   snapshot(): Snapshot {
     return {
+      subsystems: this.subsystems,
       rooms: this.rooms,
       robot: this.robot,
       queue: this.queue,

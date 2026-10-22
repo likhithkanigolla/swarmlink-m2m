@@ -18,6 +18,7 @@ import type {
   SecEntry,
   Snapshot,
   StreamFilters,
+  SubsystemHealth,
   TrafficEvent,
   TreeNode,
 } from "@/types/domain";
@@ -56,6 +57,7 @@ interface DashboardState {
   audit: AuditStep[];
   security: SecEntry[];
   fl: FlStatus;
+  subsystems: SubsystemHealth[];
   catalog: RemediationCatalogEntry[];
   filters: StreamFilters;
   focus: Focus;
@@ -102,6 +104,7 @@ export const useDashboard = create<DashboardState>((set) => ({
   audit: [],
   security: [],
   fl: { round: 0, modelVersion: "-", status: "idle" },
+  subsystems: [],
   catalog: [],
   filters: emptyFilters(),
   focus: { kind: null, id: null },
@@ -116,6 +119,8 @@ export const useDashboard = create<DashboardState>((set) => ({
   applyMessage: (m) =>
     set((st) => {
       switch (m.type) {
+        case "subsystems":
+          return { subsystems: m.data as SubsystemHealth[] };
         case "event": {
           const e = m.data as TrafficEvent;
           return { events: [e, ...st.events].slice(0, MAX_EVENTS) };
@@ -161,6 +166,7 @@ export const useDashboard = create<DashboardState>((set) => ({
         case "snapshot": {
           const s = m.data as Snapshot;
           return {
+            subsystems: s.subsystems ?? st.subsystems,
             rooms: s.rooms,
             robot: s.robot,
             queue: { entries: s.queue, note: null, reorderedAt: 0 },

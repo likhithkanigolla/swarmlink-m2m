@@ -45,36 +45,49 @@ export function KpiStrip() {
     );
   }
 
-  return (
-    <div className="border-b border-border bg-card/70 px-4 py-2 backdrop-blur-xs">
-      <div className="flex items-center gap-3 overflow-x-auto scrollbar-none pb-0.5">
-        {kpis.map((k) => {
-          let tone: "ok" | "warn" | "crit" = "ok";
-          if (k.id === "rsrp" && k.value < -105) tone = "crit";
-          else if (k.id === "rsrp" && k.value < -95) tone = "warn";
-          if (k.id === "inc" && k.value > 1) tone = "crit";
-          else if (k.id === "inc" && k.value > 0) tone = "warn";
-          if (k.id === "bat" && k.value < 20) tone = "crit";
-          else if (k.id === "bat" && k.value < 40) tone = "warn";
-          if (k.id === "hint" && k.value > 0) tone = "warn";
+  // Split stats into two rows for a clean, non-cramped display
+  const half = Math.ceil(kpis.length / 2);
+  const row1 = kpis.slice(0, half);
+  const row2 = kpis.slice(half);
 
-          return (
-            <div
-              key={k.id}
-              className="flex shrink-0 items-center gap-2.5 rounded-lg border border-border/80 bg-background/80 px-2.5 py-1.5 shadow-2xs"
-            >
-              <div className="flex flex-col">
-                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                  {k.label}
-                </span>
-                <span className="text-xs font-semibold font-mono tracking-tight text-foreground">
-                  {formatVal(k.value, k.format, k.unit)}
-                </span>
-              </div>
-              <Sparkline data={k.spark} tone={tone} />
-            </div>
-          );
-        })}
+  const renderKpiChip = (k: Kpi) => {
+    let tone: "ok" | "warn" | "crit" = "ok";
+    if (k.id === "rsrp" && k.value < -105) tone = "crit";
+    else if (k.id === "rsrp" && k.value < -95) tone = "warn";
+    if (k.id === "inc" && k.value > 1) tone = "crit";
+    else if (k.id === "inc" && k.value > 0) tone = "warn";
+    if (k.id === "bat" && k.value < 20) tone = "crit";
+    else if (k.id === "bat" && k.value < 40) tone = "warn";
+    if (k.id === "hint" && k.value > 0) tone = "warn";
+
+    return (
+      <div
+        key={k.id}
+        className="flex shrink-0 flex-1 min-w-[155px] max-w-[240px] items-center justify-between gap-2 rounded-lg border border-border/80 bg-background/80 px-2.5 py-1.5 shadow-2xs"
+      >
+        <div className="flex flex-col min-w-0">
+          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">
+            {k.label}
+          </span>
+          <span className="text-xs font-semibold font-mono tracking-tight text-foreground truncate">
+            {formatVal(k.value, k.format, k.unit)}
+          </span>
+        </div>
+        <Sparkline data={k.spark} tone={tone} />
+      </div>
+    );
+  };
+
+  return (
+    <div className="border-b border-border bg-card/70 px-4 py-2.5 backdrop-blur-xs flex flex-col gap-2">
+      {/* Row 1 */}
+      <div className="flex items-center gap-2.5 overflow-x-auto scrollbar-none">
+        {row1.map(renderKpiChip)}
+      </div>
+
+      {/* Row 2 */}
+      <div className="flex items-center gap-2.5 overflow-x-auto scrollbar-none">
+        {row2.map(renderKpiChip)}
       </div>
     </div>
   );
