@@ -7,12 +7,15 @@ from pydantic import BaseModel
 
 from models import Snapshot, FeedMessage, TrafficEvent, Incident
 from state import SystemState
+from acme import AcmeClient
 
 app = FastAPI(
     title="SwarmLink-M2M Command Center Backend",
     description="FastAPI REST & WebSocket gateway for oneM2M private-5G robot middleware and ESP32 swarms.",
     version="1.0.0"
 )
+
+acme_client = AcmeClient()
 
 # CORS middleware to allow connection from Vite frontend dev server (port 5173, 3000, etc.)
 app.add_middleware(
@@ -60,7 +63,15 @@ async def health_check():
 @app.get("/api/snapshot", response_model=Snapshot)
 async def get_snapshot():
     """Returns the full system snapshot for initial dashboard synchronization."""
-    return system_state.get_snapshot()
+    snapshot = system_state.get_snapshot()
+    acme_health = await acme_client.check_health()
+    if acme_health.get("connected"):
+        snapshot.tree = await acme_client.get_resource_tree()
+        for s in snapshot.subsystems:
+            if s.id == "in-cse":
+                s.status = "online"
+                s.endpoint = f"{acme_client.base_url}/{acme_client.cse_name}"
+    return snapshot
 
 # Subsystems
 @app.get("/api/subsystems")
@@ -225,10 +236,31 @@ async def trigger_handover(payload: dict):
     await manager.broadcast(FeedMessage(type="link", data=system_state.link.model_dump()))
     return system_state.link.model_dump()
 
+# oneM2M ACME Integration
+@app.get("/api/acme/status")
+async def get_acme_status():
+    """Checks live connection status to ACME CSE at localhost:8080."""
+    return await acme_client.check_health()
+
+@app.get("/api/acme/discover")
+async def discover_acme_resources():
+    """Discovers all resource paths registered under ACME CSEBase."""
+    urils = await acme_client.discover_resources()
+    return {"cse": acme_client.cse_name, "count": len(urils), "resources": urils}
+
 # oneM2M Resource Tree
 @app.get("/api/tree")
 async def get_tree():
-    """Returns hierarchical oneM2M ACME resource tree."""
+    """Returns oneM2M resource tree. Attempts to query live ACME first, with graceful fallback to system state."""
+    acme_health = await acme_client.check_health()
+    if acme_health.get("connected"):
+        live_tree = await acme_client.get_resource_tree()
+        # Update subsystem status chip for IN-CSE to online
+        for s in system_state.subsystems:
+            if s.id == "in-cse":
+                s.status = "online"
+                s.endpoint = f"{acme_client.base_url}/{acme_client.cse_name}"
+        return live_tree.model_dump()
     return system_state.tree.model_dump()
 
 # KPIs & Metrics
@@ -267,6 +299,13 @@ async def websocket_events(websocket: WebSocket):
     try:
         # Immediately push initial snapshot to newly connected client
         snapshot = system_state.get_snapshot()
+        acme_health = await acme_client.check_health()
+        if acme_health.get("connected"):
+            snapshot.tree = await acme_client.get_resource_tree()
+            for s in snapshot.subsystems:
+                if s.id == "in-cse":
+                    s.status = "online"
+                    s.endpoint = f"{acme_client.base_url}/{acme_client.cse_name}"
         await websocket.send_json({"type": "snapshot", "data": snapshot.model_dump()})
 
         while True:

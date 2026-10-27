@@ -78,7 +78,7 @@ def test_base_route_templates():
     # Tree
     tree_resp = client.get("/api/tree")
     assert tree_resp.status_code == 200
-    assert tree_resp.json()["label"] == "CSEBase"
+    assert tree_resp.json()["label"] in ["cse-in", "CSEBase"]
 
     # KPIs
     kpi_resp = client.get("/api/kpis")
@@ -92,3 +92,21 @@ def test_base_route_templates():
     fl_round_resp = client.post("/api/fl/round", json={})
     assert fl_round_resp.status_code == 200
     assert fl_round_resp.json()["status"] == "training"
+
+def test_acme_connection():
+    # ACME status probe
+    status_resp = client.get("/api/acme/status")
+    assert status_resp.status_code == 200
+    data = status_resp.json()
+    assert "connected" in data
+    # When ACME is running on localhost:8080, connected is True and returns cse_name
+    if data["connected"]:
+        assert data["status_code"] == 200
+        assert data["cse_name"] == "cse-in"
+
+    # ACME discovery probe
+    disc_resp = client.get("/api/acme/discover")
+    assert disc_resp.status_code == 200
+    disc_data = disc_resp.json()
+    assert disc_data["cse"] == "cse-in"
+    assert "resources" in disc_data

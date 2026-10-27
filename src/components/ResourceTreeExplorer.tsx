@@ -61,16 +61,18 @@ function TreeItem({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
 
 export function ResourceTreeExplorer() {
   const tree = useDashboard((s) => s.tree);
+  const pathLabel = tree?.path ?? "//localhost:8080/cse-in";
+  const cseTitle = tree?.label ? `ACME ${tree.label}` : "ACME CSEBase";
 
   return (
     <CardShell
       id="resource-tree"
       title="oneM2M Resource Tree"
-      subtitle="ACME CSEBase"
-      defaultCollapsed={true}
+      subtitle={cseTitle}
+      defaultCollapsed={false}
       action={
-        <span className="text-[10px] font-mono text-muted-foreground">
-          //acme.example.com
+        <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[200px]" title={pathLabel}>
+          {pathLabel}
         </span>
       }
     >
