@@ -120,60 +120,68 @@ class AcmeClient:
             return None
 
     async def get_resource_tree(self) -> TreeNode:
-        """Fetch live resource hierarchy from ACME and map to dashboard TreeNode structure."""
-        headers = self.get_headers(ri="rcn4-tree")
-        url = f"{self.base_url}/{self.cse_name}?rcn=4"
+        """Fetch full live resource hierarchy from ACME and map to dashboard TreeNode structure."""
         try:
-            async with httpx.AsyncClient(timeout=3.0) as client:
-                res = await client.get(url, headers=headers)
-                if res.status_code == 200:
-                    data = res.json()
-                    cb = data.get("m2m:cb", {})
-                    cse_rn = cb.get("rn", self.cse_name)
+            # 1. Discover all resource URIs under CSEBase
+            urils = await self.discover_resources()
+            root = TreeNode(
+                id=f"acme-{self.cse_name}",
+                label=self.cse_name,
+                kind="CSEBase",
+                path=f"//{self.base_url.replace('http://', '').replace('https://', '')}/{self.cse_name}",
+                children=[]
+            )
 
-                    root = TreeNode(
-                        id=f"acme-{cse_rn}",
-                        label=cse_rn,
-                        kind="CSEBase",
-                        path=f"//{self.base_url.replace('http://', '').replace('https://', '')}/{cse_rn}",
-                        children=[]
-                    )
+            # Map of full relative path -> TreeNode
+            node_map: Dict[str, TreeNode] = {"": root, self.cse_name: root}
 
-                    # ACME returns child resources grouped by shortname list
-                    type_mapping = {
-                        "m2m:acp": "ACP",
-                        "m2m:ae": "AE",
-                        "m2m:cnt": "container",
-                        "m2m:cin": "contentInstance",
-                        "m2m:ntp": "mgmtObj",
-                        "m2m:alst": "AE",
-                        "m2m:sub": "subscription",
-                        "m2m:nod": "node",
-                        "m2m:grp": "group",
-                        "m2m:csr": "remoteCSE",
-                        "m2m:pch": "pollingChannel",
-                        "m2m:fcnt": "flexContainer",
-                        "m2m:ts": "timeSeries",
-                        "m2m:smd": "semantic",
-                    }
+            # Helper to infer resource kind from name
+            def infer_kind(name: str) -> str:
+                n = name.lower()
+                if "acp" in n:
+                    return "ACP"
+                if "timeseries" in n or n.startswith("ts"):
+                    return "timeSeries"
+                if "pollingchannel" in n or n.startswith("pch"):
+                    return "pollingChannel"
+                if "robotae" in n or n.startswith("ae") or name == "CAdmin":
+                    return "AE"
+                if "mgmt" in n or "ntp" in n:
+                    return "mgmtObj"
+                if "incident" in n:
+                    return "flexContainer"
+                if "catalog" in n or name.isdigit():
+                    return "catalog"
+                return "container"
 
-                    for key, items in cb.items():
-                        if key.startswith("m2m:") and isinstance(items, list):
-                            kind = type_mapping.get(key, "container")
-                            for item in items:
-                                if isinstance(item, dict):
-                                    rn = item.get("rn") or item.get("ri", "resource")
-                                    root.children.append(
-                                        TreeNode(
-                                            id=f"acme-{rn}",
-                                            label=rn,
-                                            kind=kind,
-                                            path=f"//{self.base_url.replace('http://', '').replace('https://', '')}/{cse_rn}/{rn}",
-                                            children=[]
-                                        )
-                                    )
+            # Sort by path depth so parents are guaranteed created before children
+            sorted_uris = sorted(urils, key=lambda u: (u.count("/"), len(u)))
 
-                    return root
+            for uri in sorted_uris:
+                parts = uri.split("/")
+                # Skip the root itself
+                if len(parts) <= 1:
+                    continue
+
+                parent_path = "/".join(parts[:-1])
+                child_name = parts[-1]
+                kind = infer_kind(child_name)
+
+                child_node = TreeNode(
+                    id=f"acme-{uri.replace('/', '-')}",
+                    label=child_name,
+                    kind=kind,
+                    path=f"//{self.base_url.replace('http://', '').replace('https://', '')}/{uri}",
+                    children=[]
+                )
+                node_map[uri] = child_node
+
+                parent_node = node_map.get(parent_path, root)
+                if parent_node.children is None:
+                    parent_node.children = []
+                parent_node.children.append(child_node)
+
+            return root
         except Exception:
             pass
 
