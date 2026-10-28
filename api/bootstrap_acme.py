@@ -174,12 +174,16 @@ async def bootstrap():
                 await create_resource(client, rm_path, 3, rm, {
                     "lbl": [f"room:{rm.lower()}", f"district:{dist_name[8]}"]
                 })
-                # Room telemetry containers
+                # Room telemetry containers with mni (maxNrOfInstances) to prevent memory growth [TS normative]
                 await create_resource(client, f"{rm_path}/{rm}", 3, "health", {
-                    "lbl": ["status:health"]
+                    "lbl": ["status:health"],
+                    "mni": 20,
+                    "mbs": 32768
                 })
                 await create_resource(client, f"{rm_path}/{rm}", 3, "timeSeries", {
-                    "lbl": ["telemetry:stream"]
+                    "lbl": ["telemetry:stream"],
+                    "mni": 30,
+                    "mbs": 65536
                 })
                 # Add sample sensor child nodes for the 3 devices in each room
                 room_num = rm.replace("Room", "")
@@ -189,8 +193,13 @@ async def bootstrap():
                     await create_resource(client, dev_path, 3, dev_id, {
                         "lbl": [f"device:{dev_id}", "type:esp32"]
                     })
-                    await create_resource(client, f"{dev_path}/{dev_id}", 3, "data", {})
-                    await create_resource(client, f"{dev_path}/{dev_id}", 3, "mgmtObj", {})
+                    await create_resource(client, f"{dev_path}/{dev_id}", 3, "data", {
+                        "mni": 20,
+                        "mbs": 32768
+                    })
+                    await create_resource(client, f"{dev_path}/{dev_id}", 3, "mgmtObj", {
+                        "mni": 10
+                    })
 
         print("\n=== Bootstrap Complete! All resources registered in ACME. ===")
 
