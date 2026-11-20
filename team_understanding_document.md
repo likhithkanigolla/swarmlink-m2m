@@ -171,9 +171,10 @@ Based on Bob Flynn's direct advice on how judges evaluate entries:
 
 ## 6. Action Items & Work Allocation
 
-| Workstream | Lead | Next Deliverables |
+| Workstream | Lead | Deliverables & Status |
 |---|---|---|
-| **5G RAN & Core** | Lokabhiram | Finalize real-time metric stream (CQI/SNR from WiSig, RSRP/SINR from modem) into the edge socket. |
-| **MEC-IPE & oneM2M** | Likhith | Implement `api/mec_ipe.py` mapping 5G metrics to ACME resources; configure MN-CSE A & B instances. |
-| **Robot Doctor Agent** | Likhith / Team | Run `api/robot_agent.py` on the Raspberry Pi 5 to poll tasks from ACME `<pollingChannel>` and apply primitives. |
+| **5G RAN & Core** | Lokabhiram | Metric stream (CQI/SNR from WiSig, RSRP/SINR from modem) integration into edge socket. |
+| **MEC-IPE & oneM2M** | Likhith | `api/mec_ipe.py` mapping 5G metrics to ACME `[custom:mecRadioInfo]` flexContainers; multi-CSE topology running across ports 8080, 8081, 8082 with automated bootstrap (`api/bootstrap_acme.py`). **[COMPLETED]** |
+| **Robot Doctor Agent** | Likhith / Team | `api/robot_agent.py` polling tasks from ACME `<pollingChannel>` (`/pcu`) and executing primitives; signal handover verified via `scripts/simulate_handover.py`. **[COMPLETED]** |
+| **Verification & Testbed** | Team | `scripts/verify_system.py` with 17 automated checks and `api/test_multi_cse.py` test suite. **[COMPLETED]** |
 | **Demo Recording & Report** | All | Prepare presentation slides and screen-record real-time anomaly detection &rarr; approval &rarr; handover. |

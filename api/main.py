@@ -64,19 +64,60 @@ async def health_check():
 async def get_snapshot():
     """Returns the full system snapshot for initial dashboard synchronization."""
     snapshot = system_state.get_snapshot()
-    acme_health = await acme_client.check_health()
-    if acme_health.get("connected"):
-        snapshot.tree = await acme_client.get_resource_tree()
-        for s in snapshot.subsystems:
-            if s.id == "in-cse":
-                s.status = "online"
-                s.endpoint = f"{acme_client.base_url}/{acme_client.cse_name}"
+    multi_health = await acme_client.check_all_cses_health()
+    in_health = multi_health.get("in_cse", {})
+    a_health = multi_health.get("district_a", {})
+    b_health = multi_health.get("district_b", {})
+
+    active_district = system_state.link.district
+    for s in snapshot.subsystems:
+        if s.id == "in-cse":
+            s.status = "online" if in_health.get("connected") else "offline"
+            s.endpoint = f"{acme_client.base_url}/{acme_client.cse_name}"
+        elif s.id == "mn-a":
+            if a_health.get("connected"):
+                s.status = "online" if active_district == "A" else "standby"
+            else:
+                s.status = "offline"
+            s.endpoint = f"{acme_client.mn_a_url}/{acme_client.mn_a_name}"
+        elif s.id == "mn-b":
+            if b_health.get("connected"):
+                s.status = "online" if active_district == "B" else "standby"
+            else:
+                s.status = "offline"
+            s.endpoint = f"{acme_client.mn_b_url}/{acme_client.mn_b_name}"
+
+    if in_health.get("connected"):
+        snapshot.tree = await acme_client.get_multi_cse_tree()
     return snapshot
 
 # Subsystems
 @app.get("/api/subsystems")
 async def get_subsystems():
     """Returns status of all monitored edge & core subsystems (IN-CSE, MN-CSE A/B, 5G Core, Radio, Edge-LLM)."""
+    multi_health = await acme_client.check_all_cses_health()
+    in_health = multi_health.get("in_cse", {})
+    a_health = multi_health.get("district_a", {})
+    b_health = multi_health.get("district_b", {})
+    active_district = system_state.link.district
+
+    for s in system_state.subsystems:
+        if s.id == "in-cse":
+            s.status = "online" if in_health.get("connected") else "offline"
+            s.endpoint = f"{acme_client.base_url}/{acme_client.cse_name}"
+        elif s.id == "mn-a":
+            if a_health.get("connected"):
+                s.status = "online" if active_district == "A" else "standby"
+            else:
+                s.status = "offline"
+            s.endpoint = f"{acme_client.mn_a_url}/{acme_client.mn_a_name}"
+        elif s.id == "mn-b":
+            if b_health.get("connected"):
+                s.status = "online" if active_district == "B" else "standby"
+            else:
+                s.status = "offline"
+            s.endpoint = f"{acme_client.mn_b_url}/{acme_client.mn_b_name}"
+
     return [s.model_dump() for s in system_state.subsystems]
 
 @app.put("/api/subsystems/{subsystem_id}")
@@ -228,12 +269,39 @@ async def get_link():
 
 @app.post("/api/link/handover")
 async def trigger_handover(payload: dict):
-    """Base template: initiate a simulated or RNIS-triggered 5G handover between District A and B."""
+    """Initiate a simulated or RNIS-triggered 5G handover between District A and B."""
     target_district = payload.get("district", "B" if system_state.link.district == "A" else "A")
-    system_state.link.state = "re_registering"
-    system_state.link.interruptionMs = 42
+    state = payload.get("state", "re_registering")
+    interruption_ms = payload.get("interruptionMs", 42)
+    rsrp = payload.get("rsrp")
+    sinr = payload.get("sinr")
+
+    system_state.link.state = state
     system_state.link.district = target_district
+    system_state.link.interruptionMs = interruption_ms
+    if rsrp is not None:
+        system_state.link.rsrp = float(rsrp)
+    if sinr is not None:
+        system_state.link.sinr = float(sinr)
+
+    # Maintain link history
+    now_ms = int(time.time() * 1000)
+    from models import LinkHistoryItem
+    system_state.link.history.append(
+        LinkHistoryItem(ts=now_ms, rsrp=system_state.link.rsrp, sinr=system_state.link.sinr)
+    )
+    if len(system_state.link.history) > 60:
+        system_state.link.history = system_state.link.history[-60:]
+
+    # Update subsystem statuses
+    for s in system_state.subsystems:
+        if s.id == "mn-a":
+            s.status = "online" if target_district == "A" else "standby"
+        elif s.id == "mn-b":
+            s.status = "online" if target_district == "B" else "standby"
+
     await manager.broadcast(FeedMessage(type="link", data=system_state.link.model_dump()))
+    await manager.broadcast(FeedMessage(type="subsystems", data=[sub.model_dump() for sub in system_state.subsystems]))
     return system_state.link.model_dump()
 
 # oneM2M ACME Integration
@@ -241,6 +309,11 @@ async def trigger_handover(payload: dict):
 async def get_acme_status():
     """Checks live connection status to ACME CSE at localhost:8080."""
     return await acme_client.check_health()
+
+@app.get("/api/acme/multi-status")
+async def get_multi_acme_status():
+    """Returns aggregated status of IN-CSE, MN-CSE A, MN-CSE B, and Mcc remoteCSE registrations."""
+    return await acme_client.check_all_cses_health()
 
 @app.get("/api/acme/discover")
 async def discover_acme_resources():
@@ -251,11 +324,10 @@ async def discover_acme_resources():
 # oneM2M Resource Tree
 @app.get("/api/tree")
 async def get_tree():
-    """Returns oneM2M resource tree. Attempts to query live ACME first, with graceful fallback to system state."""
+    """Returns oneM2M resource tree. Attempts to query live multi-CSE first, with graceful fallback to system state."""
     acme_health = await acme_client.check_health()
     if acme_health.get("connected"):
-        live_tree = await acme_client.get_resource_tree()
-        # Update subsystem status chip for IN-CSE to online
+        live_tree = await acme_client.get_multi_cse_tree()
         for s in system_state.subsystems:
             if s.id == "in-cse":
                 s.status = "online"
@@ -298,14 +370,7 @@ async def websocket_events(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         # Immediately push initial snapshot to newly connected client
-        snapshot = system_state.get_snapshot()
-        acme_health = await acme_client.check_health()
-        if acme_health.get("connected"):
-            snapshot.tree = await acme_client.get_resource_tree()
-            for s in snapshot.subsystems:
-                if s.id == "in-cse":
-                    s.status = "online"
-                    s.endpoint = f"{acme_client.base_url}/{acme_client.cse_name}"
+        snapshot = await get_snapshot()
         await websocket.send_json({"type": "snapshot", "data": snapshot.model_dump()})
 
         while True:

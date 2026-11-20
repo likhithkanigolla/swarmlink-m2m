@@ -40,6 +40,7 @@ __pycache__/
 env/
 venv/
 .venv/
+.topology_pids.json
 ENV/
 build/
 develop-eggs/

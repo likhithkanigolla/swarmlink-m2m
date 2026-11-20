@@ -1,0 +1,14 @@
+[
+    {
+        "type": "custom:mecRadioInfo",
+        "lname": "mecRadioInfo",
+        "cnd": "custom:mecRadioInfo",
+        "attributes": [
+            { "sname": "rsrp", "lname": "rsrp", "type": "float", "car": "01", "oc": "O", "ou": "O", "od": "O" },
+            { "sname": "sinr", "lname": "sinr", "type": "float", "car": "01", "oc": "O", "ou": "O", "od": "O" },
+            { "sname": "cqi", "lname": "cqi", "type": "integer", "car": "01", "oc": "O", "ou": "O", "od": "O" },
+            { "sname": "mcs", "lname": "mcs", "type": "integer", "car": "01", "oc": "O", "ou": "O", "od": "O" },
+            { "sname": "bler", "lname": "bler", "type": "float", "car": "01", "oc": "O", "ou": "O", "od": "O" }
+        ]
+    }
+]
