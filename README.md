@@ -2,6 +2,10 @@
 
 Real-time monitoring and autonomous triage dashboard for a robot doctor maintaining an ESP32 sensor swarm across a private 5G network, mediated by oneM2M (ACME CSE) and MEC edge computing.
 
+> **Official Project Report & ACME CSE Ground Truth Proofs**:  
+> • 📄 **Hackathon Project Report**: [docs/PROJECT_REPORT.md](docs/PROJECT_REPORT.md) — Complete Hackster-style architecture report covering Private 5G, ETSI TR-0077 (Clauses 7.1, 7.2, 7.3, 7.4), hardware/software setup, and oneM2M specifications.  
+> • 🔍 **Comparative Verification Proofs**: [docs/proofs/ACME_VS_DASHBOARD_PROOF.md](docs/proofs/ACME_VS_DASHBOARD_PROOF.md) — Side-by-side visual and wire trace proofs showing ACME CSE as the hero/authority and the dashboard as its digital twin projection.
+
 ---
 
 ## Architecture Overview
